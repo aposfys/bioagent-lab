@@ -107,3 +107,19 @@ def test_registered_tools_have_well_formed_schemas():
         assert "properties" in tool.input_schema
         for name in tool.input_schema.get("required", []):
             assert name in tool.input_schema["properties"]
+
+
+def test_the_mcp_server_actually_builds_with_real_schemas():
+    """Regression: the SDK's server API changed and `build_server` raised on import-time
+    decorators that no longer exist. Nothing else exercised this path."""
+    import asyncio
+
+    registry, _ = build_registry()
+    if not registry.names():
+        pytest.skip("no backends available in this environment")
+    server = build_server(registry)
+    tools = asyncio.run(server.list_tools())
+    assert {tool.name for tool in tools} == set(registry.names())
+    for tool in tools:
+        # A schema derived from the wrapper signature, not an empty placeholder.
+        assert tool.input_schema.get("properties")

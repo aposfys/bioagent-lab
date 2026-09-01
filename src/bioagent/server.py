@@ -66,49 +66,65 @@ def _reportable_payload(payload: Mapping[str, Any], log: ProvenanceLog) -> str:
 
 
 def build_server(registry: Registry):
-    """Wire a registry up to an MCP server over stdio."""
-    import mcp.types as types
-    from mcp.server import Server
+    """Wire a registry up to an MCP server.
 
-    server = Server("bioagent")
+    Tools are declared here with explicit typed signatures, because the MCP SDK derives a
+    tool's schema from its signature and there is no way to hand it one. The registry is
+    still the only path to a handler -- these wrappers validate, authorise, meter and record
+    by delegating to :meth:`Registry.call`, and every one of them returns through
+    :func:`_reportable_payload`. Nothing here can answer without a provenance record.
+    """
+    from mcp.server import MCPServer
 
-    @server.list_tools()
-    async def list_tools() -> list[types.Tool]:
-        return [
-            types.Tool(
-                name=tool.name,
-                description=(
-                    f"{tool.description} "
-                    f"[{tool.permission.value}; "
-                    f"{tool.limits.wall_clock_seconds:g}s wall clock]"
-                ),
-                inputSchema=dict(tool.input_schema),
-            )
-            for tool in registry.tools()
-        ]
+    server = MCPServer(name="bioagent", version=__version__)
 
-    @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextContent]:
+    def _dispatch(name: str, arguments: dict[str, Any]) -> str:
         try:
-            payload, _ = registry.call(name, arguments or {})
+            payload, _ = registry.call(name, arguments)
         except ToolNotFound:
-            return [types.TextContent(type="text", text=f"no tool named {name!r}")]
+            return f"no tool named {name!r}"
         except (InvalidArguments, PermissionDenied) as exc:
             # Refused before anything ran, so there is nothing to attribute.
-            return [types.TextContent(type="text", text=str(exc))]
-        return [
-            types.TextContent(type="text", text=_reportable_payload(payload, registry.log))
-        ]
+            return str(exc)
+        return _reportable_payload(payload, registry.log)
+
+    available = set(registry.names())
+
+    if "molecule_properties" in available:
+
+        def molecule_properties(smiles: str) -> str:
+            """Compute RDKit descriptors for a SMILES string."""
+            return _dispatch("molecule_properties", {"smiles": smiles})
+
+        server.add_tool(molecule_properties)
+
+    if "fingerprint" in available:
+
+        def fingerprint(smiles: str, n_bits: int = 2048, radius: int = 2) -> str:
+            """Compute an ECFP fingerprint for a SMILES string, as hex."""
+            return _dispatch(
+                "fingerprint", {"smiles": smiles, "n_bits": n_bits, "radius": radius}
+            )
+
+        server.add_tool(fingerprint)
+
+    if "similarity_search" in available:
+
+        def similarity_search(query_hex: str, threshold: float = 0.7, top_k: int = 10) -> str:
+            """Top-k Tanimoto neighbours from the configured fpsearch index."""
+            return _dispatch(
+                "similarity_search",
+                {"query_hex": query_hex, "threshold": threshold, "top_k": top_k},
+            )
+
+        server.add_tool(similarity_search)
 
     return server
 
 
 async def _serve(registry: Registry) -> None:
-    from mcp.server.stdio import stdio_server
-
     server = build_server(registry)
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    await server.run_stdio_async()
 
 
 def main(argv: list[str] | None = None) -> int:
