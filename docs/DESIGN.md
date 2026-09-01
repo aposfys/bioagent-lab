@@ -67,3 +67,28 @@ Rather than set a limit that silently does nothing, `MEMORY_LIMIT_ENFORCEABLE` g
 `CommandResult.memory_limit_applied` reports what actually happened. A guardrail you believe
 in but that is not running is worse than no guardrail, and this package is not entitled to
 that mistake given what it is for.
+
+## Registered tools
+
+| Tool | Backend | Permission |
+| --- | --- | --- |
+| `molecule_properties` | RDKit descriptors | read-only |
+| `fingerprint` | RDKit ECFP, as hex | read-only |
+| `similarity_search` | [`fpsearch-rs`](https://github.com/aposfys/fpsearch-rs) over a prebuilt index | read-only |
+
+Inputs are digested, not trusted, so a rerun claiming to reproduce a result can
+be checked.
+
+## Layout
+
+```
+src/bioagent/
+  provenance.py   execution records, digests, and the reportability check
+  registry.py     tool registration, schema validation, permissions, the call path
+  limits.py       per-call wall-clock, memory and output ceilings
+  tools.py        the registered tools and their backend detection
+  server.py       the MCP server; every response goes through the provenance check
+```
+
+48 tests. The ones that matter assert the refusals: a fabricated value, a failed
+tool, and a partial result with a clean exit are each withheld.
