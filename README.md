@@ -60,7 +60,7 @@ bioagent --allow writes        # privileged classes are opt-in, per session
 - **Ceilings per call.** Wall clock, memory and result size. The memory ceiling is only enforceable on Linux, and the result says so rather than claiming a bound that did not hold.
 - **Inputs are digested, not trusted**, so a rerun claiming to reproduce a result can be checked.
 
-47 tests. The ones that matter assert the refusals: a fabricated value, a failed tool, and a partial result with a clean exit are each withheld.
+48 tests. The ones that matter assert the refusals: a fabricated value, a failed tool, and a partial result with a clean exit are each withheld.
 
 ### Layout
 
@@ -75,4 +75,5 @@ src/bioagent/
 
 ### Design notes
 
+- [Analysis: what was done, and why it was done that way](ANALYSIS.md)
 [Why an infrastructure layer rather than another benchmark](docs/DESIGN.md)
