@@ -23,14 +23,24 @@ record is refused at the API boundary.
 This inverts the usual arrangement. Instead of trusting the model and checking afterwards,
 the transport refuses to carry unattributed numbers.
 
-## What it will expose
+## What it exposes
 
-| Tool | From | Does |
-| --- | --- | --- |
-| `curate_chembl` | [`chem-benchmark-audit`](https://github.com/aposfys/chem-benchmark-audit) | Standardise and split a bioactivity set |
-| `similarity_search` | [`fpsearch-rs`](https://github.com/aposfys/fpsearch-rs) | Top-*k* Tanimoto over a local index |
-| `screen_ligands` | [`dhfr-campaign`](https://github.com/aposfys/dhfr-campaign) | Score a ligand set against a prepared target |
-| `compare_variants` | [`pangenome-variant-bench`](https://github.com/aposfys/pangenome-variant-bench) | Stratified variant comparison |
+Registered today, when their backends are present:
+
+| Tool | Backend |
+| --- | --- |
+| `molecule_properties` | RDKit descriptors |
+| `fingerprint` | RDKit ECFP, as hex |
+| `similarity_search` | [`fpsearch-rs`](https://github.com/aposfys/fpsearch-rs) over a prebuilt index |
+
+Planned, once the pipelines they wrap produce results: `curate_chembl`
+([`chem-benchmark-audit`](https://github.com/aposfys/chem-benchmark-audit)), `screen_ligands`
+([`dhfr-campaign`](https://github.com/aposfys/dhfr-campaign)), `compare_variants`
+([`pangenome-variant-bench`](https://github.com/aposfys/pangenome-variant-bench)).
+
+A tool whose backend is missing is not registered at all, and `build_registry` returns a
+note saying why. Registering a tool that fails on first call would leave the agent unable to
+distinguish a broken tool from an analysis that legitimately found nothing.
 
 ## Guardrails
 
@@ -45,3 +55,15 @@ the transport refuses to carry unattributed numbers.
   agent loop cannot exhaust the machine.
 - **Inputs are digested, not trusted.** Every input is hashed before use, so a rerun that
   claims to reproduce a result can be checked rather than believed.
+
+
+## Where the ceilings are real and where they are not
+
+The wall-clock and output-size ceilings are enforced everywhere. The memory ceiling is not:
+`RLIMIT_AS` behaves as expected on Linux, but macOS does not bound address space the same
+way, and a limit low enough to be useful stops a CPython child starting at all.
+
+Rather than set a limit that silently does nothing, `MEMORY_LIMIT_ENFORCEABLE` gates it and
+`CommandResult.memory_limit_applied` reports what actually happened. A guardrail you believe
+in but that is not running is worse than no guardrail, and this package is not entitled to
+that mistake given what it is for.
