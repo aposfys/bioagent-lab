@@ -8,7 +8,7 @@ import pytest
 
 from bioagent.provenance import ProvenanceLog
 from bioagent.registry import Registry, Tool, ToolResult
-from bioagent.server import _reportable_payload, main
+from bioagent.server import _reportable_payload, build_server, main
 from bioagent.tools import build_registry
 
 
