@@ -53,6 +53,30 @@ that value.
 - **A tool whose backend is absent is not registered**, and startup says why. An
   agent cannot tell "this tool is broken" from "this analysis found nothing".
 
+### Prior work
+
+**Provenance enforcement for LLM agents is an active research area, and the pattern
+implemented here is described in it.** This repository is an implementation, not a proposal.
+
+- *From Agent Traces to Trust: A Survey of Evidence Tracing and Execution Provenance in LLM
+  Agents* (2026) — defines execution provenance as the typed graph of an agent execution and
+  evidence tracing as its projection onto evidence-support relations, and argues trustworthy
+  tool use requires tracing why a tool was called, where its arguments came from, and whether
+  its output was reliable. That is the model `assert_reportable` enforces.
+- *ProvenanceGuard: Source-Aware Factuality Verification for MCP-Based LLM Agents* (2026) —
+  consumes MCP traces with stable tool and source IDs, decomposes answers into atomic claims,
+  and checks the claim's stated attribution against the routed source. It names
+  cross-source conflation as the failure mode: a claim supported *somewhere* in the evidence
+  but attributed to the wrong place.
+- *Verifiability-First Agents* (2025) — the runtime-rejection design, where an action outside
+  the declared tools or lacking attestation is refused rather than logged.
+
+Where this differs is scope rather than principle: refusal sits on the response path of a
+working scientific tool server rather than in a verification layer over traces, so a value
+that no execution produced cannot leave the process at all. That is an engineering choice
+with a real consequence, and it is worth having — but the idea is the field's, not this
+repository's.
+
 ### More
 
 - [Analysis](ANALYSIS.md) — what was done and why it was done that way
